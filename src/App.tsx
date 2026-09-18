@@ -1,6 +1,6 @@
 /* eslint-disable jsx-a11y/label-has-associated-control */
 /* eslint-disable jsx-a11y/control-has-associated-label */
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 // import { UserWarning } from './UserWarning';
 import { getTodos, USER_ID } from './api/todos';
 import { Todo } from './types/Todo';
@@ -19,6 +19,18 @@ const errorMessageOptions = {
   updateTodo: 'Unable to update a todo',
 };
 
+function getVisibleTodos(selectedFilter: DefaultFilter, todos: Todo[]) {
+  if (selectedFilter === DefaultFilter.All) {
+    return todos;
+  }
+
+  if (selectedFilter === DefaultFilter.Active) {
+    return todos.filter(todo => todo.completed === false);
+  }
+
+  return todos.filter(todo => todo.completed === true);
+}
+
 export const App: React.FC = () => {
   const [todos, setTodos] = useState<Todo[]>([]);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -26,8 +38,8 @@ export const App: React.FC = () => {
   const [selectedFilter, setSelectedFilter] = useState<DefaultFilter>(
     DefaultFilter.All,
   );
-  const [filteredTodos, setFilteredTodos] = useState<Todo[]>([]);
-  const activeTodos = useRef<number>();
+
+  const activeTodosCount = todos.filter(todo => !todo.completed).length;
 
   useEffect(() => {
     getTodos()
@@ -47,22 +59,10 @@ export const App: React.FC = () => {
     }
   }, [errorMessage]);
 
-  useEffect(() => {
-    if (selectedFilter === DefaultFilter.All) {
-      setFilteredTodos(todos);
-    } else if (selectedFilter === DefaultFilter.Active) {
-      setFilteredTodos(todos.filter(todo => todo.completed === false));
-    } else {
-      setFilteredTodos(todos.filter(todo => todo.completed === true));
-    }
-  }, [selectedFilter, todos]);
-
-  useEffect(() => {
-    activeTodos.current = todos.reduce(
-      (prev, todo) => (todo.completed ? prev : prev + 1),
-      0,
-    );
-  }, [todos]);
+  const filteredTodos = useMemo(
+    () => getVisibleTodos(selectedFilter, todos),
+    [selectedFilter, todos],
+  );
 
   if (!USER_ID) {
     return <UserWarning />;
@@ -90,7 +90,7 @@ export const App: React.FC = () => {
         {todos.length > 0 && (
           <footer className="todoapp__footer" data-cy="Footer">
             <span className="todo-count" data-cy="TodosCounter">
-              {activeTodos.current} items left
+              {activeTodosCount} items left
             </span>
 
             {/* Active link should have the 'selected' class */}
